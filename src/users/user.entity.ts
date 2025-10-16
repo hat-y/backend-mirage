@@ -9,6 +9,7 @@ import {
 import * as bcrypt from 'bcrypt';
 
 //Modulos Internos
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid') id!: string;
