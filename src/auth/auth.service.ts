@@ -15,32 +15,70 @@ export class AuthService {
   ) {}
 
   async register(registerDto: RegisterDto): Promise<{ user: User; accessToken: string }> {
-    const existingUser = await this.usersService.findByEmail(registerDto.email);
-    if (existingUser) {
-      throw new BadRequestException('User with this email already exists');
+    try {
+      const existingUser = await this.usersService.findByEmail(registerDto.email);
+      if (existingUser) {
+        throw new BadRequestException('User with this email already exists');
+      }
+
+      const newUser = await this.usersService.create(registerDto);
+      const accessToken = await this.generateJwtToken(newUser);
+
+      // Remove password from response
+      delete (newUser as any).password;
+
+      return { user: newUser, accessToken };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Error during registration');
     }
-
-    const newUser = await this.usersService.create(registerDto);
-    const accessToken = await this.generateJwtToken(newUser);
-
-    return { user: newUser, accessToken };
   }
 
   async login(loginDto: LoginDto): Promise<{ user: User; accessToken: string }> {
-    const user = await this.usersService.findByEmail(loginDto.email, true); // true to select password
-    if (!user || !(await user.comparePassword(loginDto.password))) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+    try {
+      const user = await this.usersService.findByEmail(loginDto.email, true); // true to select password
+      
+      if (!user) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
 
-    const accessToken = await this.generateJwtToken(user);
-    return { user, accessToken };
+      const isPasswordValid = await user.comparePassword(loginDto.password);
+      
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      const accessToken = await this.generateJwtToken(user);
+      
+      // Remove password from response
+      delete (user as any).password;
+
+      return { user, accessToken };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('Error during login');
+    }
   }
 
   private async generateJwtToken(user: User): Promise<string> {
-    const payload = { email: user.email, sub: user.id };
-    return this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn: '1h',
-    });
+    try {
+      const payload = { email: user.email, sub: user.id };
+      const secret = this.configService.get<string>('JWT_SECRET');
+      
+      if (!secret) {
+        throw new Error('JWT_SECRET is not defined');
+      }
+
+      return this.jwtService.sign(payload, {
+        secret,
+        expiresIn: '1h',
+      });
+    } catch (error) {
+      throw new BadRequestException('Error generating token');
+    }
   }
 }

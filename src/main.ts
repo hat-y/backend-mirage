@@ -1,27 +1,58 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { ValidationPipe, Logger } from '@nestjs/common';
-import { NestExpressApplication } from '@nestjs/platform-express';
+// Modulos Node
 import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+
+// Moduloss Externos
+import { ValidationPipe, Logger } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+
+// Modulos Internos
+import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
+  try {
+    const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+      bufferLogs: true,
+    });
 
-  // Enable CORS
-  app.enableCors({
-    origin: process.env.CORS_ORIGIN || '*',
-    credentials: true,
-  });
+    // Enable CORS with better security
+    app.enableCors({
+      origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    });
 
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
 
-  app.useStaticAssets(join(__dirname, '..', '..', 'uploads'), { prefix: '/static/' });
+    // Ensure uploads directory exists
+    const uploadsPath = join(__dirname, '..', '..', 'uploads');
+    if (!existsSync(uploadsPath)) {
+      Logger.log('Creating uploads directory...');
+      mkdirSync(uploadsPath, { recursive: true });
+    }
 
-  const port = process.env.PORT ?? 3000;
-  await app.listen(port);
+    app.useStaticAssets(uploadsPath, {
+      prefix: '/static/',
+    });
 
-  Logger.log(`🚀 API running on port :${port}`);
-  Logger.log(`📡 Hot reload enabled for development`);
+    const port = parseInt(process.env.PORT || '3000', 10);
+    await app.listen(port);
+
+    Logger.log(`🚀 API running on port: ${port}`);
+    Logger.log(`📁 Static files: ${uploadsPath}`);
+    Logger.log(`🔄 Hot reload enabled for development`);
+  } catch (error) {
+    Logger.error('❌ Error starting application:', error);
+    process.exit(1);
+  }
 }
 
 bootstrap();

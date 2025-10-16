@@ -1,8 +1,11 @@
+// Modulos Externos
 import { DataSource } from 'typeorm';
-import { User } from '../../users/user.entity'; // Adjust path to your User entity
 import { faker } from '@faker-js/faker';
 import * as dotenv from 'dotenv';
-import ormConfig from '../../../ormconfig'; // Adjust path to your ormconfig
+
+// Modulos Internos
+import ormConfig from '../../../orm.config';
+import { User } from '../../users/user.entity';
 
 dotenv.config();
 
@@ -39,7 +42,7 @@ async function seed() {
   }
 }
 
-seed().catch(error => {
+seed().catch((error) => {
   console.error('Seeding failed:', error);
   process.exit(1);
 });

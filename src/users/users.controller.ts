@@ -1,5 +1,21 @@
-import { Controller, Get, Param, Post, Body, Patch, Delete, UseInterceptors, UploadedFile, ParseFilePipeBuilder, HttpStatus, UseGuards } from '@nestjs/common';
+// Modulos Externos
+import {
+  Controller,
+  Get,
+  Param,
+  Post,
+  Body,
+  Patch,
+  Delete,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipeBuilder,
+  HttpStatus,
+  UseGuards,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+
+// Modulos Internos
 import { UsersService } from './users.service';
 import { multerOptions } from '../config/multer.config';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -8,31 +24,38 @@ import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('users')
 export class UsersController {
-  constructor(
-    private readonly s: UsersService
-  ) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @UseGuards(JwtAuthGuard)
-  @Get() list() {
-    return this.s.findAll();
+  @Get()
+  list() {
+    return this.usersService.findAll();
   }
 
-  @Get(':id') one(@Param('id') id: string) {
-    return this.s.findOne(id);
+  @UseGuards(JwtAuthGuard)
+  @Get(':id')
+  one(@Param('id') id: string) {
+    return this.usersService.findOne(id);
   }
 
-  @Post() create(@Body() createUserDto: CreateUserDto) {
-    return this.s.create(createUserDto);
+  @Post()
+  create(@Body() createUserDto: CreateUserDto) {
+    return this.usersService.create(createUserDto);
   }
 
-  @Patch(':id') update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.s.update(id, updateUserDto);
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.usersService.update(id, updateUserDto);
   }
 
-  @Delete(':id') del(@Param('id') id: string) {
-    return this.s.remove(id);
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  del(@Param('id') id: string) {
+    return this.usersService.remove(id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':id/avatar')
   @UseInterceptors(FileInterceptor('avatar', multerOptions))
   async uploadAvatar(
@@ -40,7 +63,7 @@ export class UsersController {
     @UploadedFile(
       new ParseFilePipeBuilder()
         .addFileTypeValidator({
-          fileType: 'image/(jpeg|png|gif)', // Matches the fileFilter regex
+          fileType: /(jpg|jpeg|png|gif)$/, // Fixed regex
         })
         .addMaxSizeValidator({
           maxSize: 1024 * 1024 * 5, // 5MB, Matches the limits
@@ -60,5 +83,4 @@ export class UsersController {
       path: file.path,
     };
   }
-
 }

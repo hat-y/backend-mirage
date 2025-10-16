@@ -1,6 +1,14 @@
-import { BeforeInsert, BeforeUpdate, Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+// Modulos Externos
+import {
+  BeforeInsert,
+  BeforeUpdate,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+} from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
+//Modulos Internos
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid') id!: string;
@@ -23,11 +31,27 @@ export class User {
   @Column({ select: false })
   password!: string;
 
+  // Track if password has been hashed to avoid double hashing
+  private isPasswordHashed = false;
+
   @BeforeInsert()
-  @BeforeUpdate()
-  async setPassword() {
-    if (this.password) {
+  async hashPasswordBeforeInsert() {
+    if (this.password && !this.isPasswordHashed) {
       this.password = await bcrypt.hash(this.password, 10);
+      this.isPasswordHashed = true;
+    }
+  }
+
+  @BeforeUpdate()
+  async hashPasswordBeforeUpdate() {
+    // Only hash if password is being changed and hasn't been hashed yet
+    if (
+      this.password &&
+      !this.isPasswordHashed &&
+      !this.password.startsWith('$2b$')
+    ) {
+      this.password = await bcrypt.hash(this.password, 10);
+      this.isPasswordHashed = true;
     }
   }
 
@@ -35,4 +59,3 @@ export class User {
     return await bcrypt.compare(attempt, this.password);
   }
 }
-

@@ -1,6 +1,7 @@
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { v4 as uuid } from 'uuid';
+import { randomUUID } from 'crypto';
+import { BadRequestException } from '@nestjs/common';
 
 export const multerOptions = {
   // Enable file size limits
@@ -14,17 +15,18 @@ export const multerOptions = {
       cb(null, true);
     } else {
       // Reject file
-      cb(new Error('Unsupported file type'), false);
+      cb(new BadRequestException('Unsupported file type. Only JPG, JPEG, PNG, and GIF are allowed.'), false);
     }
   },
   // Storage properties
   storage: diskStorage({
     destination: './uploads', // Destination path for uploaded files
     filename: (req: any, file: any, cb: any) => {
-      // Generating a 32 random chars long string
-      const randomName = uuid();
+      // Generating a random UUID for the filename
+      const randomName = randomUUID();
       // Appending extension to random name
-      cb(null, `${randomName}${extname(file.originalname)}`);
+      const fileExtension = extname(file.originalname);
+      cb(null, `${randomName}${fileExtension}`);
     },
   }),
 };
